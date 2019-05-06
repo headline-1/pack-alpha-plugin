@@ -318,7 +318,7 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
           ].filter(Boolean),
         },
         plugins: [
-          circularDependencies && new CircularDependencyPlugin({
+          circularDependencies && circularDependencies !== 'disable' && new CircularDependencyPlugin({
             exclude: /node_modules/,
             failOnError: circularDependencies === 'error',
             allowAsyncCycles: false,
