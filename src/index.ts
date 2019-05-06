@@ -61,10 +61,20 @@ module.exports = new CommandBuilder()
         cli: 'staticPath',
         required: false,
       })
+      .add('circularDependencies', {
+        type: Types.keyof({
+          error: null,
+          warn: null,
+          disable: null,
+        }),
+        description: 'Determines if we should check for circularDependencies or not',
+        cli: 'circularDependencies',
+        required: false,
+      })
       .build(),
   )
   .execute(async ({
-    entry, mode, type, sources, output, html, staticPath,
+    entry, mode, type, sources, output, html, staticPath, circularDependencies,
   }) => {
     const config = await createWebpackConfiguration({
       type,
@@ -75,12 +85,13 @@ module.exports = new CommandBuilder()
       root: process.cwd(),
       html,
       staticPath,
+      circularDependencies,
       env: process.env as Record<string, string>,
     });
 
-    switch(mode){
+    switch (mode) {
       case 'development':
-        switch(type){
+        switch (type) {
           case 'node':
             break;
           case 'browserLibrary':
