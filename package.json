@@ -1,6 +1,6 @@
 {
   "name": "pack-alpha-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pack your project with Webpack",
   "main": "./dist/index.js",
   "repository": "git@github.com:headline-1/pack-alpha-plugin.git",
@@ -11,7 +11,8 @@
   "license": "MIT",
   "private": false,
   "files": [
-    "src"
+    "dist",
+    "docs"
   ],
   "keywords": [
     "webpack",
@@ -20,13 +21,16 @@
     "zero-config"
   ],
   "scripts": {
-    "build": "tsc"
+    "clean": "rimraf dist",
+    "docs": "@ docs self && git add ./docs/commands",
+    "build": "tsc",
+    "prepare": "yarn clean && yarn build && yarn docs"
   },
   "peerDependencies": {
-    "@lpha/core": "^0.4.2"
+    "@lpha/core": "^0.4.4"
   },
   "devDependencies": {
-    "@lpha/core": "^0.4.2",
+    "@lpha/core": "^0.4.4",
     "@types/case-sensitive-paths-webpack-plugin": "^2.1.2",
     "@types/circular-dependency-plugin": "^5.0.0",
     "@types/fs-extra": "^5.0.5",
@@ -38,11 +42,12 @@
     "@types/terser-webpack-plugin": "^1.2.1",
     "@types/webpack": "^4.4.30",
     "@types/webpack-manifest-plugin": "^2.0.0",
+    "rimraf": "^2.6.3",
     "typescript": "^3.4.5"
   },
   "optionalDependencies": {
-    "typescript": "*",
-    "eslint": "*"
+    "eslint": "*",
+    "typescript": "*"
   },
   "dependencies": {
     "@babel/core": "^7.4.4",
@@ -81,5 +86,8 @@
     "webpack-dev-server": "^3.3.1",
     "webpack-manifest-plugin": "^2.0.4",
     "workbox-webpack-plugin": "^4.3.0"
+  },
+  "@": {
+
   }
 }
