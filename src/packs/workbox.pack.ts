@@ -1,17 +1,19 @@
 /* eslint-disable */
 import { Pack } from './pack.type';
+import { isTruthy } from '../utils/notNil.util';
 
 const WorkboxWebpackPlugin = require('workbox-webpack-plugin');
 
 export const getWorkboxPack: Pack = ({
   publicPath,
-  mode
+  mode,
+  serviceWorker,
 }) => {
   const dev = mode === 'development';
   return {
     rules: [],
     plugins: [
-      !dev && new WorkboxWebpackPlugin.GenerateSW({
+      !dev && serviceWorker && new WorkboxWebpackPlugin.GenerateSW({
         swDest: 'service-worker.js',
         importWorkboxFrom: 'local',
         precacheManifestFilename: 'precache-manifest.[manifestHash].js',
@@ -45,6 +47,6 @@ export const getWorkboxPack: Pack = ({
           new RegExp('/[^/]+\\.[^/]+$'),
         ],
       }),
-    ],
+    ].filter(isTruthy),
   };
 };

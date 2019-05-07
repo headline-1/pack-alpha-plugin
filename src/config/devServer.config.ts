@@ -12,7 +12,7 @@ const host = process.env.HOST || '0.0.0.0';
 
 export const createWebpackDevServerConfiguration = (
   { options, config, webpackConfig }: ConfigResult,
-  proxy: ProxyConfigArray,
+  proxy: ProxyConfigArray | undefined,
   allowedHost: string | undefined,
 ): WebpackDevServer.Configuration => {
   return {

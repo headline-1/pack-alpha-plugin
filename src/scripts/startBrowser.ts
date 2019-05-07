@@ -61,7 +61,9 @@ export const startBrowser = async (configResult: ConfigResult) => {
     } = packageJson;
     const urls = prepareUrls(protocol, HOST, port);
     const compiler = createCompiler({ webpack, config: webpackConfig, appName, urls, useYarn });
-    const proxyConfig = options.staticPath ? prepareProxy(proxySetting, path.resolve(cwd, options.staticPath)) : [];
+    const proxyConfig = options.staticPath
+      ? prepareProxy(proxySetting, path.resolve(cwd, options.staticPath))
+      : undefined;
     const serverConfig = createWebpackDevServerConfiguration(
       configResult,
       proxyConfig,

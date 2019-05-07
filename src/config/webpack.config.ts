@@ -19,6 +19,8 @@ import { getWorkboxPack } from '../packs/workbox.pack';
 import { Config, ConfigOptions, ConfigResult } from './config.types';
 import { accessFile } from '../utils/access.util';
 import { arraify } from '../utils/array.util';
+import { isTruthy, removeNonTruthyValues } from '../utils/notNil.util';
+import { fromEntries } from '../utils/fromEntries.util';
 
 const getNodePath = () => {
   const appDirectory = fs.realpathSync(process.cwd());
@@ -64,7 +66,7 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
     outputCssFilename: 'static/css/[name].[contenthash:8].css',
     outputCssChunkFilename: 'static/css/[name].[contenthash:8].chunk.css',
     publicPath: '/',
-    aliases: [],
+    aliases: {},
     sources: [],
     ignore: [],
     lint: true,
@@ -93,19 +95,21 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
       sources: sources.map(s => path.join(root, s)),
       tsconfig: tsconfigPath ? path.join(root, tsconfigPath) : await accessFile('tsconfig.json'),
       tslint: tslintPath ? path.join(root, tslintPath) : await accessFile('tslint.json'),
+      packageJson: await accessFile('package.json'),
     }
   };
+  const packageJson = config.paths.packageJson ? await import(config.paths.packageJson) : {};
 
   const developmentConfig: Configuration = {
     mode: 'development',
     devtool: 'cheap-module-source-map',
-    entry: [
-      require.resolve('react-dev-utils/webpackHotDevClient'),
-    ],
+    entry: removeNonTruthyValues({
+      whd: type === 'browser' && require.resolve('react-dev-utils/webpackHotDevClient'),
+    }),
     output: {
       pathinfo: true,
-      filename: 'static/js/bundle.js',
-      chunkFilename: 'static/js/[name].chunk.js',
+      filename: type === 'browser' ? 'static/js/[name].js' : '[name].js',
+      chunkFilename: type === 'browser' ? 'static/js/[name].chunk.js' : undefined,
       devtoolModuleFilenameTemplate: (info: any) => path
         .resolve(info.absoluteResourcePath)
         .replace(/\\/g, '/'),
@@ -116,8 +120,8 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
     bail: true,
     devtool: 'source-map',
     output: {
-      filename: 'static/js/[name].[chunkhash:8].js',
-      chunkFilename: 'static/js/[name].[chunkhash:8].chunk.js',
+      filename: type === 'browser' ? 'static/js/[name].[chunkhash:8].js' : '[name].js',
+      chunkFilename: type === 'browser' ? 'static/js/[name].[chunkhash:8].chunk.js' : undefined,
       devtoolModuleFilenameTemplate: (info: any) => path
         .relative(root, info.absoluteResourcePath)
         .replace(/\\/g, '/'),
@@ -145,9 +149,9 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
     },
   };
 
-  const tsconfigAliases = config.paths.tsconfig
+  const tsconfigAliases: Record<string, string> = config.paths.tsconfig
     ? aliasTsconfigPaths(require(config.paths.tsconfig))
-    : [];
+    : {};
 
   const threadLoader = {
     loader: require.resolve('thread-loader'),
@@ -162,196 +166,203 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
   const stylePack = getStylePack(options, config);
   const workboxPack = getWorkboxPack(options, config);
 
+  const mainConfig: Configuration = {
+    entry: removeNonTruthyValues({
+      // TODO use Object.fromEntries when ES2019 is available in TS
+      ...fromEntries(config.paths.entries.map(entry => ([path.basename(entry, path.extname(entry)), entry]))),
+    }),
+    output: {
+      path: config.paths.output,
+      publicPath,
+      filename: outputFilename,
+      chunkFilename: outputChunkFilename,
+      library: type !== 'browser' ? '' : undefined,
+      libraryTarget: type !== 'browser' ? 'commonjs' : undefined,
+    },
+    optimization: {
+      runtimeChunk: type === 'browser',
+      splitChunks: type === 'browser' ? {
+        chunks: 'all',
+        name: false,
+      } : false,
+    },
+    resolve: {
+      plugins: [
+        new ModuleScopePlugin(config.paths.sources, [path.join(root, 'package.json')]),
+        config.paths.tsconfig && new TsconfigPathsPlugin({ configFile: config.paths.tsconfig }),
+      ].filter(isTruthy),
+      symlinks: false,
+      modules: ['node_modules']
+        .concat(path.resolve(path.join(__dirname, 'node_modules')))
+        .concat(process.env.NODE_PATH.split(path.delimiter).filter(isTruthy)),
+      extensions: ['.web.ts', '.ts', '.web.tsx', '.tsx', '.web.js', '.js', '.json', '.web.jsx', '.jsx'],
+      alias: {
+        'react-native': 'react-native-web',
+        ...tsconfigAliases,
+        ...aliases,
+      },
+    },
+    module: {
+      strictExportPresence: true,
+      rules: [
+        { parser: { requireEnsure: false } },
+        (await hasEslintConfig()) && {
+          test: /\.(js|ts)x?$/,
+          enforce: 'pre' as 'pre',
+          use: [
+            {
+              options: {
+                formatter: require.resolve('react-dev-utils/eslintFormatter'),
+                eslintPath: require('eslint'),
+              },
+              loader: require.resolve('eslint-loader'),
+            },
+          ],
+          include: config.paths.sources[0], // Test the primary source directory
+        },
+        {
+          test: /\.(js|jsx|mjs)$/,
+          loader: require.resolve('source-map-loader'),
+          enforce: 'pre' as 'pre',
+          include: config.paths.sources[0],
+        },
+        {
+          test: /\.mjs$/,
+          include: /node_modules/,
+          type: 'javascript/auto' as 'javascript/auto',
+        },
+        {
+          oneOf: [
+            // Images
+            {
+              test: [/\.bmp$/, /\.gif$/, /\.jpe?g$/, /\.png$/],
+              loader: require.resolve('url-loader'),
+              options: {
+                limit: 10000,
+                name: outputAssetFilename,
+              },
+            },
+            // Source TS
+            !!config.paths.tsconfig && {
+              test: /\.(ts|tsx)$/,
+              include: config.paths.sources,
+              use: [
+                {
+                  loader: require.resolve('ts-loader'),
+                  options: {
+                    transpileOnly: type === 'browser',
+                  },
+                },
+              ],
+            },
+            // Source JS
+            {
+              test: /\.(js|jsx)$/,
+              include: config.paths.sources,
+              use: [
+                threadLoader,
+                {
+                  loader: require.resolve('babel-loader'),
+                  options: {
+                    customize: require.resolve('babel-preset-react-app/webpack-overrides'),
+                    plugins: [
+                      [
+                        require.resolve('babel-plugin-named-asset-import'),
+                        {
+                          loaderMap: {
+                            svg: { ReactComponent: '@svgr/webpack?-prettier,-svgo![path]' },
+                          },
+                        },
+                      ],
+                    ],
+                    cacheDirectory: true,
+                    cacheCompression: false,
+                    compact: !dev,
+                  },
+                },
+              ],
+            },
+            // External JS
+            {
+              test: /\.js$/,
+              exclude: /@babel(?:\/|\\{1,2})runtime/,
+              use: [
+                threadLoader,
+                {
+                  loader: require.resolve('babel-loader'),
+                  options: {
+                    babelrc: false,
+                    configFile: false,
+                    compact: false,
+                    presets: [
+                      [
+                        require.resolve('babel-preset-react-app/dependencies'),
+                        { helpers: true },
+                      ],
+                    ],
+                    cacheDirectory: true,
+                    cacheCompression: false,
+                    sourceMaps: false,
+                  },
+                },
+              ],
+            },
+            // Styles
+            ...stylePack.rules,
+            {
+              loader: require.resolve('file-loader'),
+              exclude: [/\.(js|jsx|json|html)$/],
+              options: {
+                name: outputAssetFilename,
+              },
+            },
+          ].filter(isTruthy),
+        },
+      ].filter(isTruthy),
+    },
+    plugins: [
+      circularDependencies && circularDependencies !== 'disable' && new CircularDependencyPlugin({
+        exclude: /node_modules/,
+        failOnError: circularDependencies === 'error',
+        allowAsyncCycles: false,
+        cwd: process.cwd(),
+      }),
+      ...htmlPack.plugins,
+      ...stylePack.plugins,
+      ...workboxPack.plugins,
+      new webpack.DefinePlugin(stringifiedEnvironment),
+      dev && new webpack.HotModuleReplacementPlugin(),
+      dev && new CaseSensitivePathsPlugin(),
+      dev && new WatchMissingNodeModulesPlugin(path.resolve(root, 'node_modules')),
+      new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
+      !!config.paths.tsconfig && new ForkTsCheckerWebpackPlugin({
+        async: false,
+        watch: dev ? config.paths.sources : undefined,
+        tsconfig: config.paths.tsconfig,
+        tslint: config.paths.tslint,
+      }),
+      new ManifestPlugin({
+        fileName: 'asset-manifest.json',
+        publicPath,
+      }),
+    ].filter(isTruthy),
+    node: {
+      dgram: 'empty',
+      fs: 'empty',
+      net: 'empty',
+      tls: 'empty',
+      child_process: 'empty',
+    },
+    performance: false,
+    externals: type !== 'browser' ? Object.keys(packageJson.peerDependencies || {}) : undefined,
+  };
+
   return {
     options,
     config,
     webpackConfig: merge(
       dev ? developmentConfig : productionConfig,
-      {
-        entry: [
-          dev && require.resolve('react-dev-utils/webpackHotDevClient'),
-          ...config.paths.entries,
-        ].filter(Boolean),
-        output: {
-          path: config.paths.output,
-          publicPath,
-          filename: outputFilename,
-          chunkFilename: outputChunkFilename,
-        },
-        optimization: {
-          runtimeChunk: true,
-          splitChunks: {
-            chunks: 'all',
-            name: false,
-          },
-        },
-        resolve: {
-          plugins: [
-            new ModuleScopePlugin(config.paths.sources, [path.join(root, 'package.json')]),
-            config.paths.tsconfig && new TsconfigPathsPlugin({ configFile: config.paths.tsconfig }),
-          ].filter(Boolean),
-          symlinks: false,
-          modules: ['node_modules']
-            .concat(path.resolve(path.join(__dirname, 'node_modules')))
-            .concat(process.env.NODE_PATH.split(path.delimiter).filter(Boolean)),
-          extensions: ['.web.ts', '.ts', '.web.tsx', '.tsx', '.web.js', '.js', '.json', '.web.jsx', '.jsx'],
-          alias: {
-            'react-native': 'react-native-web',
-            ...tsconfigAliases,
-            ...aliases,
-          },
-        },
-        module: {
-          strictExportPresence: true,
-          rules: [
-            { parser: { requireEnsure: false } },
-            await hasEslintConfig() && {
-              test: /\.(js|ts)x?$/,
-              enforce: 'pre',
-              use: [
-                {
-                  options: {
-                    formatter: require.resolve('react-dev-utils/eslintFormatter'),
-                    eslintPath: require('eslint'),
-                  },
-                  loader: require.resolve('eslint-loader'),
-                },
-              ],
-              include: config.paths.sources[0], // Test the primary source directory
-            },
-            {
-              test: /\.(js|jsx|mjs)$/,
-              loader: require.resolve('source-map-loader'),
-              enforce: 'pre',
-              include: config.paths.sources[0],
-            },
-            {
-              test: /\.mjs$/,
-              include: /node_modules/,
-              type: 'javascript/auto',
-            },
-            {
-              oneOf: [
-                // Images
-                {
-                  test: [/\.bmp$/, /\.gif$/, /\.jpe?g$/, /\.png$/],
-                  loader: require.resolve('url-loader'),
-                  options: {
-                    limit: 10000,
-                    name: outputAssetFilename,
-                  },
-                },
-                // Source TS
-                !!config.paths.tsconfig && {
-                  test: /\.(ts|tsx)$/,
-                  include: config.paths.sources,
-                  use: [
-                    {
-                      loader: require.resolve('ts-loader'),
-                      options: { transpileOnly: true },
-                    },
-                  ],
-                },
-                // Source JS
-                {
-                  test: /\.(js|jsx)$/,
-                  include: config.paths.sources,
-                  use: [
-                    threadLoader,
-                    {
-                      loader: require.resolve('babel-loader'),
-                      options: {
-                        customize: require.resolve('babel-preset-react-app/webpack-overrides'),
-                        plugins: [
-                          [
-                            require.resolve('babel-plugin-named-asset-import'),
-                            {
-                              loaderMap: {
-                                svg: { ReactComponent: '@svgr/webpack?-prettier,-svgo![path]' },
-                              },
-                            },
-                          ],
-                        ],
-                        cacheDirectory: true,
-                        cacheCompression: false,
-                        compact: !dev,
-                      },
-                    },
-                  ],
-                },
-                // External JS
-                {
-                  test: /\.js$/,
-                  exclude: /@babel(?:\/|\\{1,2})runtime/,
-                  use: [
-                    threadLoader,
-                    {
-                      loader: require.resolve('babel-loader'),
-                      options: {
-                        babelrc: false,
-                        configFile: false,
-                        compact: false,
-                        presets: [
-                          [
-                            require.resolve('babel-preset-react-app/dependencies'),
-                            { helpers: true },
-                          ],
-                        ],
-                        cacheDirectory: true,
-                        cacheCompression: false,
-                        sourceMaps: false,
-                      },
-                    },
-                  ],
-                },
-                // Styles
-                ...stylePack.rules,
-                {
-                  loader: require.resolve('file-loader'),
-                  exclude: [/\.(js|jsx|json|html)$/],
-                  options: {
-                    name: outputAssetFilename,
-                  },
-                },
-              ],
-            },
-          ].filter(Boolean),
-        },
-        plugins: [
-          circularDependencies && circularDependencies !== 'disable' && new CircularDependencyPlugin({
-            exclude: /node_modules/,
-            failOnError: circularDependencies === 'error',
-            allowAsyncCycles: false,
-            cwd: process.cwd(),
-          }),
-          ...htmlPack.plugins,
-          ...stylePack.plugins,
-          ...workboxPack.plugins,
-          new webpack.DefinePlugin(stringifiedEnvironment),
-          dev && new webpack.HotModuleReplacementPlugin(),
-          dev && new CaseSensitivePathsPlugin(),
-          dev && new WatchMissingNodeModulesPlugin(path.resolve(root, 'node_modules')),
-          new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
-          !!config.paths.tsconfig && new ForkTsCheckerWebpackPlugin({
-            async: false,
-            watch: dev ? config.paths.sources : undefined,
-            tsconfig: config.paths.tsconfig,
-            tslint: config.paths.tslint,
-          }),
-          new ManifestPlugin({
-            fileName: 'asset-manifest.json',
-            publicPath,
-          }),
-        ].filter(Boolean),
-        node: type !== 'node' && {
-          dgram: 'empty',
-          fs: 'empty',
-          net: 'empty',
-          tls: 'empty',
-          child_process: 'empty',
-        },
-        performance: false,
-      },
+      mainConfig
     ),
   };
 };

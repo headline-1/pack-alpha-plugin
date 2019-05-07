@@ -1,5 +1,9 @@
 import { ConfigResult } from '../config/config.types';
-import { measureFileSizesBeforeBuild, printFileSizesAfterBuild, OpaqueFileSizes } from 'react-dev-utils/FileSizeReporter';
+import {
+  measureFileSizesBeforeBuild,
+  OpaqueFileSizes,
+  printFileSizesAfterBuild
+} from 'react-dev-utils/FileSizeReporter';
 import webpack, { Stats } from 'webpack';
 import printBuildError from 'react-dev-utils/printBuildError';
 import printHostingInstructions from 'react-dev-utils/printHostingInstructions';
@@ -104,16 +108,6 @@ export const build = async ({ webpackConfig, options, config }: ConfigResult) =>
       if (warnings.length) {
         console.log(chalk.yellow('Compiled with warnings.\n'));
         console.log(warnings.join('\n\n'));
-        console.log(
-          '\nSearch for the ' +
-          chalk.underline(chalk.yellow('keywords')) +
-          ' to learn more about each warning.'
-        );
-        console.log(
-          'To ignore, add ' +
-          chalk.cyan('// eslint-disable-next-line') +
-          ' to the line before.\n'
-        );
       } else {
         console.log(chalk.green('Compiled successfully.\n'));
       }
@@ -134,13 +128,15 @@ export const build = async ({ webpackConfig, options, config }: ConfigResult) =>
       const buildFolder = path.relative(cwd, webpackConfig.output!.path!);
       const useYarn = fs.existsSync(path.resolve(cwd, 'yarn.lock'));
 
-      printHostingInstructions(
-        appPackage,
-        publicUrl,
-        publicPath,
-        buildFolder,
-        useYarn
-      );
+      if (options.type === 'browser') {
+        printHostingInstructions(
+          appPackage,
+          publicUrl,
+          publicPath,
+          buildFolder,
+          useYarn
+        );
+      }
     } catch (err) {
       console.log(chalk.red('Failed to compile.\n'));
       printBuildError(err);

@@ -2,7 +2,7 @@ import HtmlWebpackPlugin from 'html-webpack-plugin';
 import InlineChunkHtmlPlugin from 'react-dev-utils/InlineChunkHtmlPlugin';
 import InterpolateHtmlPlugin from 'react-dev-utils/InterpolateHtmlPlugin';
 import { Pack } from './pack.type';
-import { Plugin } from 'webpack';
+import { isTruthy } from '../utils/notNil.util';
 
 export const getHtmlPack: Pack = ({
   html,
@@ -33,7 +33,7 @@ export const getHtmlPack: Pack = ({
         }),
         !dev && new InlineChunkHtmlPlugin(HtmlWebpackPlugin, [/runtime~.+[.]js/]),
         new InterpolateHtmlPlugin(HtmlWebpackPlugin, environment),
-      ].filter(Boolean) as Plugin[]
+      ].filter(isTruthy)
       : [],
   };
 };

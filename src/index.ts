@@ -1,8 +1,9 @@
 import { CommandBuilder, ParametersBuilder, Types } from '@lpha/core';
 import { createWebpackConfiguration } from './config/webpack.config';
 import { build } from './scripts/build';
-import { startBrowser } from './scripts/start';
+import { startBrowser } from './scripts/startBrowser';
 import { arraify } from './utils/array.util';
+import { startWatch } from './scripts/startWatch';
 
 module.exports = new CommandBuilder()
   .name('pack')
@@ -11,7 +12,6 @@ module.exports = new CommandBuilder()
     new ParametersBuilder()
       .add('type', {
         type: Types.keyof({
-          node: null,
           browser: null,
           browserLibrary: null,
         }),
@@ -92,9 +92,9 @@ module.exports = new CommandBuilder()
     switch (mode) {
       case 'development':
         switch (type) {
-          case 'node':
-            break;
           case 'browserLibrary':
+            await startWatch(config);
+            break;
           case 'browser':
             await startBrowser(config);
             break;

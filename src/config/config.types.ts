@@ -1,7 +1,7 @@
 import { Configuration } from 'webpack';
 
 export interface ConfigOptions {
-  type: 'node' | 'browser' | 'browserLibrary';
+  type: 'browser' | 'browserLibrary';
   root: string;
   entry: string | string[];
   mode: 'production' | 'development';
@@ -15,7 +15,7 @@ export interface ConfigOptions {
   publicPath?: string;
   tslintPath?: string;
   tsconfigPath?: string;
-  aliases?: string[];
+  aliases?: Record<string, string>;
   sources?: string[];
   sourceMaps?: boolean;
   circularDependencies?: 'error' | 'warn' | 'disable';
@@ -23,6 +23,7 @@ export interface ConfigOptions {
   env: Record<string, string>;
   ignore?: RegExp | RegExp[];
   stats?: boolean;
+  serviceWorker?: boolean;
 }
 
 export interface Config {
@@ -34,6 +35,7 @@ export interface Config {
     sources: string[];
     tsconfig?: string;
     tslint?: string;
+    packageJson?: string;
   }
 }
 
