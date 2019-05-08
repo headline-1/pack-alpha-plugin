@@ -2,6 +2,7 @@ import { Config } from '../config/config.types';
 import { locate, use } from '../utils/buildDependencyManager.util';
 import { Configuration } from 'webpack';
 import { hasDependency } from '../utils/packageJson.util';
+import getCSSModuleLocalIdent from 'react-dev-utils/getCSSModuleLocalIdent';
 
 const cssRegex = /\.css$/;
 const cssModuleRegex = /\.module\.css$/;
@@ -29,7 +30,6 @@ export const getStylePack = async (config: Config): Promise<Configuration> => {
   const MiniCssExtractPlugin = await use('mini-css-extract-plugin', '0.6.0');
   const PostCSSFlexbugsFixesPlugin = await use('postcss-flexbugs-fixes', '4.1.0');
   const PostCSSPresetEnvPlugin = await use('postcss-preset-env', '6.6.0');
-  const getCSSModuleLocalIdent = await use('react-dev-utils/getCSSModuleLocalIdent', '9.0.0');
 
   const getStyleLoaders = async (cssOptions: any, preProcessor?: string) => {
     const loaders = [

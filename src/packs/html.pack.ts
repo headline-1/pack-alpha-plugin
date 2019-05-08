@@ -1,6 +1,8 @@
 import { isTruthy } from '../utils/notNil.util';
 import { Config } from '../config/config.types';
 import { Configuration } from 'webpack';
+import InlineChunkHtmlPlugin from 'react-dev-utils/InlineChunkHtmlPlugin';
+import InterpolateHtmlPlugin from 'react-dev-utils/InterpolateHtmlPlugin';
 import { use } from '../utils/buildDependencyManager.util';
 
 export const getHtmlPack = async ({ options: { html, mode }, environment }: Config): Promise<Configuration> => {
@@ -9,10 +11,7 @@ export const getHtmlPack = async ({ options: { html, mode }, environment }: Conf
   }
   const dev = mode === 'development';
 
-  const HtmlWebpackPlugin = await use('html-webpack-plugin', '4.0.0-beta.5');
-  const InlineChunkHtmlPlugin = await use('react-dev-utils/InlineChunkHtmlPlugin', '9.0.0');
-  const InterpolateHtmlPlugin = await use('react-dev-utils/InterpolateHtmlPlugin', '9.0.0');
-
+  const { default: HtmlWebpackPlugin } = await use('html-webpack-plugin', '4.0.0-beta.5');
   return {
     plugins: [
       new HtmlWebpackPlugin({

@@ -1,4 +1,4 @@
-import { exec, Logger, makeDir, readFile } from '@lpha/core';
+import { Access, access, exec, Logger, makeDir, readFile } from '@lpha/core';
 import * as path from 'path';
 import PromiseQueue from 'promise-queue';
 import { accessFile } from './access.util';
@@ -27,7 +27,7 @@ const getPackageJsonFor = async (packageName: string): Promise<PackageJson | und
   }
 };
 
-const projectExists = async () => !!(await accessFile (packageJsonLocation));
+const projectExists = () => access(packageJsonLocation, Access.EXISTS);
 
 const assureInnerProjectExists = async () => {
   if (await projectExists()) {

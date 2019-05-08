@@ -2,24 +2,20 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { defaults } from 'lodash';
 import * as webpack from 'webpack';
-import merge from'webpack-merge';
 import { Configuration } from 'webpack';
+import merge from 'webpack-merge';
 import WatchMissingNodeModulesPlugin from 'react-dev-utils/WatchMissingNodeModulesPlugin';
 import TerserPlugin from 'terser-webpack-plugin';
 import CaseSensitivePathsPlugin from 'case-sensitive-paths-webpack-plugin';
 import ManifestPlugin from 'webpack-manifest-plugin';
 import ModuleScopePlugin from 'react-dev-utils/ModuleScopePlugin';
 import CircularDependencyPlugin from 'circular-dependency-plugin';
-import { getStylePack } from '../packs/style.pack';
-import { getHtmlPack } from '../packs/html.pack';
-import { getWorkboxPack } from '../packs/workbox.pack';
 import { Config, ConfigOptions, ConfigResult } from './config.types';
 import { accessFile } from '../utils/access.util';
 import { arraify } from '../utils/array.util';
 import { isTruthy, removeNonTruthyValues } from '../utils/notNil.util';
 import { fromEntries } from '../utils/fromEntries.util';
-import { getTypescriptPack } from '../packs/typescript.pack';
-import { getVuePack } from '../packs/vue.pack';
+import { getPacks } from '../packs';
 
 const getNodePath = () => {
   const appDirectory = fs.realpathSync(process.cwd());
@@ -132,7 +128,6 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
       ],
     },
   };
-
 
   const threadLoader = {
     loader: require.resolve('thread-loader'),
@@ -311,11 +306,7 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
   const webpackConfig = merge.smart(
     dev ? developmentConfig : productionConfig,
     mainConfig,
-    await getHtmlPack(config),
-    await getStylePack(config),
-    await getWorkboxPack(config),
-    await getTypescriptPack(config),
-    await getVuePack(config),
+    ...(await getPacks(config)),
   );
 
   return {
