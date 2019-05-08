@@ -27,13 +27,13 @@ export interface ConfigOptions {
 }
 
 export interface Config {
+  options: ConfigOptions;
   environment: Record<string, string>;
   ignore: RegExp[];
   paths: {
     output: string;
     entries: string[];
     sources: string[];
-    tsconfig?: string;
     tslint?: string;
     packageJson?: string;
   }

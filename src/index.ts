@@ -1,9 +1,14 @@
-import { CommandBuilder, ParametersBuilder, Types } from '@lpha/core';
+import { CommandBuilder, Logger, ParametersBuilder, Types } from '@lpha/core';
 import { createWebpackConfiguration } from './config/webpack.config';
 import { build } from './scripts/build';
 import { startBrowser } from './scripts/startBrowser';
 import { arraify } from './utils/array.util';
 import { startWatch } from './scripts/startWatch';
+
+Logger.add({
+  log: console.log,
+  useChalk: true,
+});
 
 module.exports = new CommandBuilder()
   .name('pack')

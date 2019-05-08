@@ -1,17 +1,21 @@
 /* eslint-disable */
-import { Pack } from './pack.type';
 import { isTruthy } from '../utils/notNil.util';
+import { Config } from '../config/config.types';
+import { use } from '../utils/buildDependencyManager.util';
+import { Configuration } from 'webpack';
 
-const WorkboxWebpackPlugin = require('workbox-webpack-plugin');
-
-export const getWorkboxPack: Pack = ({
-  publicPath,
-  mode,
-  serviceWorker,
-}) => {
+export const getWorkboxPack = async ({
+  options: {
+    publicPath,
+    mode,
+    serviceWorker,
+  },
+}: Config): Promise<Configuration> => {
   const dev = mode === 'development';
+
+  const WorkboxWebpackPlugin = await use('workbox-webpack-plugin', '4.3.1');
+
   return {
-    rules: [],
     plugins: [
       !dev && serviceWorker && new WorkboxWebpackPlugin.GenerateSW({
         swDest: 'service-worker.js',

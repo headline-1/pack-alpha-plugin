@@ -10,6 +10,7 @@ import { choosePort, createCompiler, prepareProxy, prepareUrls } from 'react-dev
 import openBrowser from 'react-dev-utils/openBrowser';
 import { ConfigResult } from '../config/config.types';
 import { createWebpackDevServerConfiguration } from '../config/devServer.config';
+import { getPackageJson } from '../utils/packageJson.util';
 
 process.env.BABEL_ENV = 'development';
 process.env.NODE_ENV = 'development';
@@ -54,7 +55,7 @@ export const startBrowser = async (configResult: ConfigResult) => {
       return;
     }
     const protocol = process.env.HTTPS === 'true' ? 'https' : 'http';
-    const packageJson = require(path.resolve(cwd, 'package.json'));
+    const packageJson = await getPackageJson();
     const {
       name: appName,
       proxy: proxySetting,

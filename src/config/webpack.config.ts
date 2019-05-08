@@ -1,17 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { defaults, merge } from 'lodash';
+import { defaults } from 'lodash';
 import * as webpack from 'webpack';
+import merge from'webpack-merge';
 import { Configuration } from 'webpack';
 import WatchMissingNodeModulesPlugin from 'react-dev-utils/WatchMissingNodeModulesPlugin';
 import TerserPlugin from 'terser-webpack-plugin';
-import OptimizeCSSAssetsPlugin from 'optimize-css-assets-webpack-plugin';
 import CaseSensitivePathsPlugin from 'case-sensitive-paths-webpack-plugin';
-import safePostCssParser from 'postcss-safe-parser';
 import ManifestPlugin from 'webpack-manifest-plugin';
 import ModuleScopePlugin from 'react-dev-utils/ModuleScopePlugin';
-import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
-import TsconfigPathsPlugin from 'tsconfig-paths-webpack-plugin';
 import CircularDependencyPlugin from 'circular-dependency-plugin';
 import { getStylePack } from '../packs/style.pack';
 import { getHtmlPack } from '../packs/html.pack';
@@ -21,6 +18,8 @@ import { accessFile } from '../utils/access.util';
 import { arraify } from '../utils/array.util';
 import { isTruthy, removeNonTruthyValues } from '../utils/notNil.util';
 import { fromEntries } from '../utils/fromEntries.util';
+import { getTypescriptPack } from '../packs/typescript.pack';
+import { getVuePack } from '../packs/vue.pack';
 
 const getNodePath = () => {
   const appDirectory = fs.realpathSync(process.cwd());
@@ -30,15 +29,6 @@ const getNodePath = () => {
     .map(folder => path.resolve(appDirectory, folder))
     .join(path.delimiter);
 };
-
-const aliasTsconfigPaths = (tsconfig: any) => Object
-  .entries((tsconfig.compilerOptions.paths || {}) as Record<string, string[]>)
-  .reduce((aliases, [key, [value]]) => {
-    const slashIndex = key.indexOf('/');
-    const exactMatch = key.indexOf('*') < 0 ? '$' : '';
-    aliases[(slashIndex < 0 ? key : key.slice(0, slashIndex)) + exactMatch] = path.resolve(value);
-    return aliases;
-  }, {} as Record<string, string>);
 
 export const createWebpackConfiguration = async (options: ConfigOptions): Promise<ConfigResult> => {
   const {
@@ -52,7 +42,6 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
     outputAssetFilename,
     publicPath,
     tslintPath,
-    tsconfigPath,
     aliases,
     sources,
     circularDependencies,
@@ -87,13 +76,13 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
   };
 
   const config: Config = {
+    options,
     environment,
     ignore: arraify(ignore),
     paths: {
       entries: arraify(entry, ',').map(e => path.join(root, e)),
       output: path.join(root, outputPath),
       sources: sources.map(s => path.join(root, s)),
-      tsconfig: tsconfigPath ? path.join(root, tsconfigPath) : await accessFile('tsconfig.json'),
       tslint: tslintPath ? path.join(root, tslintPath) : await accessFile('tslint.json'),
       packageJson: await accessFile('package.json'),
     }
@@ -139,19 +128,11 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
           cache: true,
           sourceMap: true,
         }),
-        new OptimizeCSSAssetsPlugin({
-          cssProcessorOptions: {
-            parser: safePostCssParser,
-            map: { inline: false, annotation: true },
-          },
-        }),
+
       ],
     },
   };
 
-  const tsconfigAliases: Record<string, string> = config.paths.tsconfig
-    ? aliasTsconfigPaths(require(config.paths.tsconfig))
-    : {};
 
   const threadLoader = {
     loader: require.resolve('thread-loader'),
@@ -161,10 +142,6 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
   const hasEslintConfig = async () =>
     !!(await accessFile(/^\.eslintrc\.(js|ya?ml|json)/)) ||
     !!(await import(path.join(root, 'package.json'))).eslintConfig;
-
-  const htmlPack = getHtmlPack(options, config);
-  const stylePack = getStylePack(options, config);
-  const workboxPack = getWorkboxPack(options, config);
 
   const mainConfig: Configuration = {
     entry: removeNonTruthyValues({
@@ -189,16 +166,14 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
     resolve: {
       plugins: [
         new ModuleScopePlugin(config.paths.sources, [path.join(root, 'package.json')]),
-        config.paths.tsconfig && new TsconfigPathsPlugin({ configFile: config.paths.tsconfig }),
       ].filter(isTruthy),
       symlinks: false,
       modules: ['node_modules']
         .concat(path.resolve(path.join(__dirname, 'node_modules')))
         .concat(process.env.NODE_PATH.split(path.delimiter).filter(isTruthy)),
-      extensions: ['.web.ts', '.ts', '.web.tsx', '.tsx', '.web.js', '.js', '.json', '.web.jsx', '.jsx'],
+      extensions: ['.web.js', '.js', '.json', '.web.jsx', '.jsx'],
       alias: {
         'react-native': 'react-native-web',
-        ...tsconfigAliases,
         ...aliases,
       },
     },
@@ -241,19 +216,6 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
                 limit: 10000,
                 name: outputAssetFilename,
               },
-            },
-            // Source TS
-            !!config.paths.tsconfig && {
-              test: /\.(ts|tsx)$/,
-              include: config.paths.sources,
-              use: [
-                {
-                  loader: require.resolve('ts-loader'),
-                  options: {
-                    transpileOnly: type === 'browser',
-                  },
-                },
-              ],
             },
             // Source JS
             {
@@ -307,8 +269,6 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
                 },
               ],
             },
-            // Styles
-            ...stylePack.rules,
             {
               loader: require.resolve('file-loader'),
               exclude: [/\.(js|jsx|json|html)$/],
@@ -327,20 +287,11 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
         allowAsyncCycles: false,
         cwd: process.cwd(),
       }),
-      ...htmlPack.plugins,
-      ...stylePack.plugins,
-      ...workboxPack.plugins,
       new webpack.DefinePlugin(stringifiedEnvironment),
       dev && new webpack.HotModuleReplacementPlugin(),
       dev && new CaseSensitivePathsPlugin(),
       dev && new WatchMissingNodeModulesPlugin(path.resolve(root, 'node_modules')),
       new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
-      !!config.paths.tsconfig && new ForkTsCheckerWebpackPlugin({
-        async: false,
-        watch: dev ? config.paths.sources : undefined,
-        tsconfig: config.paths.tsconfig,
-        tslint: config.paths.tslint,
-      }),
       new ManifestPlugin({
         fileName: 'asset-manifest.json',
         publicPath,
@@ -357,12 +308,19 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
     externals: type !== 'browser' ? Object.keys(packageJson.peerDependencies || {}) : undefined,
   };
 
+  const webpackConfig = merge.smart(
+    dev ? developmentConfig : productionConfig,
+    mainConfig,
+    await getHtmlPack(config),
+    await getStylePack(config),
+    await getWorkboxPack(config),
+    await getTypescriptPack(config),
+    await getVuePack(config),
+  );
+
   return {
     options,
     config,
-    webpackConfig: merge(
-      dev ? developmentConfig : productionConfig,
-      mainConfig
-    ),
+    webpackConfig,
   };
 };

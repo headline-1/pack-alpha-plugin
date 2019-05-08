@@ -1,6 +1,14 @@
 import { Access, access, readDir } from '@lpha/core';
 import * as path from 'path';
 
+const tryToReadDir = async (path: string): Promise<string[]> => {
+  try {
+    return await readDir(path);
+  } catch {
+    return [];
+  }
+};
+
 export const accessFile = async (name: string | RegExp) => {
   const cwd = process.cwd();
   if (typeof name === 'string') {
@@ -9,7 +17,7 @@ export const accessFile = async (name: string | RegExp) => {
       return filePath;
     }
   }
-  return (await readDir(cwd))
+  return (await tryToReadDir(cwd))
     .filter(file => !!file.match(name))
     .map(f => path.join(cwd, f))
     [0];

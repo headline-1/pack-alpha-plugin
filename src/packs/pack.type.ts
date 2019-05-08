@@ -1,7 +1,4 @@
-import { Config, ConfigOptions } from '../config/config.types';
-import { Plugin, RuleSetRule } from 'webpack';
+import { Config } from '../config/config.types';
+import { Configuration } from 'webpack';
 
-export type Pack<T = {}> = (options: T & ConfigOptions, config: Config) => ({
-  rules: RuleSetRule[];
-  plugins: Plugin[];
-});
+export type Pack<T = {}> = (config: Config) => Promise<Configuration>
