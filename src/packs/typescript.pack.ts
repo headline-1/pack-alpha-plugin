@@ -20,41 +20,40 @@ const aliasTsconfigPaths = (tsconfig: any) => Object
   }, {} as Record<string, string>);
 
 export const getTypescriptPack = async (config: Config): Promise<Configuration> => {
-  if(!await useTypescriptPack()){
+  if (!await useTypescriptPack()) {
     return {};
   }
   const tsconfig = await getTsconfig();
   const tslint = await getTslint();
-  const tsconfigAliases: Record<string, string> = tsconfig
-    ? aliasTsconfigPaths(require(tsconfig))
-    : {};
 
   await use('ts-loader', '5.4.4');
-  const { TsconfigPathsPlugin } = await use('tsconfig-paths-webpack-plugin', '3.2.0');
-  const ForkTsCheckerWebpackPlugin = await use('fork-ts-checker-webpack-plugin', '1.2.0');
+  const { default: TsconfigPathsPlugin } = await use('tsconfig-paths-webpack-plugin', '3.2.0');
+  const { default: ForkTsCheckerWebpackPlugin } = await use('fork-ts-checker-webpack-plugin', '1.2.0');
 
   return {
     resolve: {
       plugins: [
         new TsconfigPathsPlugin({ configFile: tsconfig }),
       ].filter(isTruthy),
-      extensions: ['.web.ts', '.ts', '.web.tsx', '.tsx'],
-      alias: {
-        ...tsconfigAliases,
-      },
+      alias: aliasTsconfigPaths(require(tsconfig)),
     },
     module: {
       rules: [
-        // Source TS
         {
-          test: /\.(ts|tsx)$/,
-          include: config.paths.sources,
-          use: [
+          oneOf: [
+            // Source TS
             {
-              loader: await locate('ts-loader'),
-              options: {
-                transpileOnly: config.options.type === 'browser',
-              },
+              test: /\.(ts|tsx)$/,
+              include: config.paths.sources,
+              use: [
+                {
+                  loader: await locate('ts-loader'),
+                  options: {
+                    configFile: tsconfig,
+                    transpileOnly: config.options.type === 'browser',
+                  },
+                },
+              ],
             },
           ],
         },
@@ -64,8 +63,8 @@ export const getTypescriptPack = async (config: Config): Promise<Configuration> 
       new ForkTsCheckerWebpackPlugin({
         async: false,
         watch: config.options.mode === 'development' ? config.paths.sources : undefined,
-        tsconfig: tsconfig,
-        tslint: tslint,
+        tsconfig,
+        tslint,
       }),
     ]
   };

@@ -10,13 +10,16 @@ export const getHtmlPack = async ({ options: { html, mode }, environment }: Conf
     return {};
   }
   const dev = mode === 'development';
+  const [template, optionsString ] = typeof html === 'string' ? html.split('!') : [true, ''];
+  const options = optionsString.split(',');
+  const inject = !options.includes('no-inject');
 
   const { default: HtmlWebpackPlugin } = await use('html-webpack-plugin', '4.0.0-beta.5');
   return {
     plugins: [
       new HtmlWebpackPlugin({
-        inject: true,
-        template: html !== true ? html : undefined,
+        inject,
+        template,
         minify: !dev ? {
           removeComments: true,
           collapseWhitespace: true,

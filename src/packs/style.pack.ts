@@ -25,11 +25,11 @@ export const getStylePack = async (config: Config): Promise<Configuration> => {
   await use('sass-lint', '1.13.1');
   await use('sass-loader', '7.1.0');
   await use('css-loader', '2.1.1');
-  const safePostCssParser = await use('postcss-safe-parser', '4.0.1');
-  const OptimizeCSSAssetsPlugin = await use('optimize-css-assets-webpack-plugin', '5.0.1');
-  const MiniCssExtractPlugin = await use('mini-css-extract-plugin', '0.6.0');
-  const PostCSSFlexbugsFixesPlugin = await use('postcss-flexbugs-fixes', '4.1.0');
-  const PostCSSPresetEnvPlugin = await use('postcss-preset-env', '6.6.0');
+  const { default: safePostCssParser } = await use('postcss-safe-parser', '4.0.1');
+  const { default: OptimizeCSSAssetsPlugin } = await use('optimize-css-assets-webpack-plugin', '5.0.1');
+  const { default: MiniCssExtractPlugin } = await use('mini-css-extract-plugin', '0.6.0');
+  const { default: PostCSSFlexbugsFixesPlugin } = await use('postcss-flexbugs-fixes', '4.1.0');
+  const { default: PostCSSPresetEnvPlugin } = await use('postcss-preset-env', '6.6.0');
 
   const getStyleLoaders = async (cssOptions: any, preProcessor?: string) => {
     const loaders = [

@@ -61,7 +61,7 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
   const dev = mode === 'development';
   process.env.NODE_PATH = getNodePath();
   process.env.NODE_ENV = mode;
-  process.env.PUBLIC_URL = (publicPath + '/').replace(/\/{2,}/g, '/');
+  process.env.PUBLIC_URL = publicPath.replace(/\/+$/g, '');
 
   const environment = { ...process.env, ...env } as Record<string, string>;
   const stringifiedEnvironment = {
@@ -138,10 +138,13 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
     !!(await accessFile(/^\.eslintrc\.(js|ya?ml|json)/)) ||
     !!(await import(path.join(root, 'package.json'))).eslintConfig;
 
+  const entries = fromEntries(config.paths.entries
+    .map(entry => ([path.basename(entry, path.extname(entry)), entry])));
+
   const mainConfig: Configuration = {
     entry: removeNonTruthyValues({
       // TODO use Object.fromEntries when ES2019 is available in TS
-      ...fromEntries(config.paths.entries.map(entry => ([path.basename(entry, path.extname(entry)), entry]))),
+      ...entries,
     }),
     output: {
       path: config.paths.output,
@@ -166,7 +169,7 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
       modules: ['node_modules']
         .concat(path.resolve(path.join(__dirname, 'node_modules')))
         .concat(process.env.NODE_PATH.split(path.delimiter).filter(isTruthy)),
-      extensions: ['.web.js', '.js', '.json', '.web.jsx', '.jsx'],
+      extensions: ['.web.ts', '.ts', '.web.tsx', '.tsx', '.web.js', '.js', '.json', '.web.jsx', '.jsx'],
       alias: {
         'react-native': 'react-native-web',
         ...aliases,
@@ -214,7 +217,7 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
             },
             // Source JS
             {
-              test: /\.(js|jsx)$/,
+              test: /\.(jsx?)$/,
               include: config.paths.sources,
               use: [
                 threadLoader,
@@ -266,7 +269,7 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
             },
             {
               loader: require.resolve('file-loader'),
-              exclude: [/\.(js|jsx|json|html)$/],
+              exclude: [/\.(tsx?|jsx?|json|html)$/],
               options: {
                 name: outputAssetFilename,
               },
@@ -303,10 +306,12 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
     externals: type !== 'browser' ? Object.keys(packageJson.peerDependencies || {}) : undefined,
   };
 
+  const packs = await getPacks(config);
+
   const webpackConfig = merge.smart(
     dev ? developmentConfig : productionConfig,
     mainConfig,
-    ...(await getPacks(config)),
+    ...packs,
   );
 
   return {

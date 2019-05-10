@@ -9,11 +9,21 @@ interface PackageJson {
   description?: string;
 }
 
-const TAG = 'Build Dependency Manager';
+const TAG = 'Build Tools Manager';
 
-const innerProjectLocation = path.join(process.cwd(), 'node_modules/.cache/pack-alpha-plugin/inner-dependencies');
-const packageJsonLocation = path.join(innerProjectLocation, 'package.json');
-const nodeModulesLocation = path.join(innerProjectLocation, 'node_modules');
+const paths = {
+  cache: '',
+  innerProject: '',
+  packageJson: '',
+  nodeModules: '',
+};
+
+export const setCacheLocation = (location: string) => {
+  paths.cache = path.isAbsolute(location) ? location : path.join(process.cwd(), location);
+  paths.innerProject = path.join(paths.cache, 'inner-dependencies');
+  paths.packageJson = path.join(paths.innerProject, 'package.json');
+  paths.nodeModules = path.join(paths.innerProject, 'node_modules');
+};
 
 const dependencyManagerQueue = new PromiseQueue(1, Infinity);
 
@@ -21,22 +31,47 @@ const useYarn = async () => !!(await accessFile('yarn.lock'));
 
 const getPackageJsonFor = async (packageName: string): Promise<PackageJson | undefined> => {
   try {
-    return JSON.parse(await readFile(path.join(nodeModulesLocation, packageName, 'package.json'), 'utf8'));
+    return JSON.parse(await readFile(path.join(paths.nodeModules, packageName, 'package.json'), 'utf8'));
   } catch {
     return undefined;
   }
 };
 
-const projectExists = () => access(packageJsonLocation, Access.EXISTS);
+const gitignoreCheck = async () => {
+  if (!paths.cache.startsWith(process.cwd())) {
+    return;
+  }
+  const gitignorePath = await accessFile('.gitignore');
+  if (!gitignorePath) {
+    return;
+  }
+  const gitignore = await readFile(gitignorePath, 'utf8');
+  if (gitignore.includes(paths.cache)) {
+    return;
+  }
+  Logger.warn(TAG,
+    `Build tools cache directory is not in .gitignore file. It's recommended to add '${
+    path.relative(process.cwd(), paths.cache)}' to it.`
+  );
+};
 
+const projectExists = () => access(paths.packageJson, Access.EXISTS);
+
+let projectChecked = false;
 const assureInnerProjectExists = async () => {
+  if(projectChecked){
+    return;
+  }
+  await gitignoreCheck();
   if (await projectExists()) {
+    projectChecked = true;
     return;
   }
   Logger.log(TAG, 'Creating inner project for build dependencies...');
-  await makeDir(innerProjectLocation);
+  await makeDir(paths.innerProject);
   const init = (await useYarn()) ? 'yarn init -y' : 'npm init -y';
-  await exec(`cd '${innerProjectLocation}' && ${init}`, { silent: true });
+  await exec(`cd '${paths.innerProject}' && ${init}`, { silent: true });
+  projectChecked = true;
 };
 
 const getInstallPackageName = (packageName: string) => {
@@ -56,7 +91,7 @@ const assurePackageExists = async (packageName: string, version: string) => {
     const add = (await useYarn())
       ? `yarn add ${installPackageName}@${version}`
       : `npm install ${installPackageName}@${version}`;
-    await exec(`cd ${innerProjectLocation} && ${add}`, { silent: true });
+    await exec(`cd ${paths.innerProject} && ${add}`, { silent: true });
     Logger.log(TAG, `Installed ${packageName}@${version}`);
   }
 };
@@ -65,12 +100,12 @@ export const use = async (packageName: string, version: string): Promise<any> =>
   await dependencyManagerQueue.add(async () => {
     await assurePackageExists(packageName, version);
   });
-  return await import(path.join(nodeModulesLocation, packageName));
+  return await import(path.join(paths.nodeModules, packageName));
 };
 
 export const locate = async (packageName: string): Promise<string> => {
   await dependencyManagerQueue.add(async () => {
     await assureInnerProjectExists();
   });
-  return path.join(nodeModulesLocation, packageName);
+  return path.join(paths.nodeModules, packageName);
 };
