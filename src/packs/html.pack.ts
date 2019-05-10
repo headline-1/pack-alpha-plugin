@@ -10,7 +10,7 @@ export const getHtmlPack = async ({ options: { html, mode }, environment }: Conf
     return {};
   }
   const dev = mode === 'development';
-  const [template, optionsString ] = typeof html === 'string' ? html.split('!') : [true, ''];
+  const [template, optionsString = ''] = typeof html === 'string' ? html.split('!') : [true, ''];
   const options = optionsString.split(',');
   const inject = !options.includes('no-inject');
 

@@ -22,7 +22,6 @@ export const getStylePack = async (config: Config): Promise<Configuration> => {
     throw new Error('In order to process styles you need to install node-sass for project.');
   }
   await use('postcss-loader', '3.0.0');
-  await use('sass-lint', '1.13.1');
   await use('sass-loader', '7.1.0');
   await use('css-loader', '2.1.1');
   const { default: safePostCssParser } = await use('postcss-safe-parser', '4.0.1');
@@ -62,7 +61,7 @@ export const getStylePack = async (config: Config): Promise<Configuration> => {
     ];
     if (preProcessor) {
       loaders.push({
-        loader: require.resolve(preProcessor),
+        loader: preProcessor,
         options: {
           sourceMap: cssOptions.sourceMaps,
         },
@@ -85,44 +84,48 @@ export const getStylePack = async (config: Config): Promise<Configuration> => {
     module: {
       rules: [
         {
-          test: cssRegex,
-          exclude: cssModuleRegex,
-          loader: await getStyleLoaders({
-            importLoaders: 1,
-            sourceMap: sourceMaps,
-          }),
-        },
-        {
-          test: cssModuleRegex,
-          loader: await getStyleLoaders({
-            importLoaders: 1,
-            sourceMap: sourceMaps,
-            modules: true,
-            getLocalIdent: getCSSModuleLocalIdent,
-          }),
-        },
-        {
-          test: sassRegex,
-          exclude: sassModuleRegex,
-          loader: await getStyleLoaders(
+          oneOf: [
             {
-              importLoaders: 2,
-              sourceMap: sourceMaps,
+              test: cssRegex,
+              exclude: cssModuleRegex,
+              loader: await getStyleLoaders({
+                importLoaders: 1,
+                sourceMap: sourceMaps,
+              }),
             },
-            await locate('sass-loader'),
-          ),
-        },
-        {
-          test: sassModuleRegex,
-          loader: await getStyleLoaders(
             {
-              importLoaders: 2,
-              sourceMap: sourceMaps,
-              modules: true,
-              getLocalIdent: getCSSModuleLocalIdent,
+              test: cssModuleRegex,
+              loader: await getStyleLoaders({
+                importLoaders: 1,
+                sourceMap: sourceMaps,
+                modules: true,
+                getLocalIdent: getCSSModuleLocalIdent,
+              }),
             },
-            await locate('sass-loader'),
-          ),
+            {
+              test: sassRegex,
+              exclude: sassModuleRegex,
+              loader: await getStyleLoaders(
+                {
+                  importLoaders: 2,
+                  sourceMap: sourceMaps,
+                },
+                await locate('sass-loader'),
+              ),
+            },
+            {
+              test: sassModuleRegex,
+              loader: await getStyleLoaders(
+                {
+                  importLoaders: 2,
+                  sourceMap: sourceMaps,
+                  modules: true,
+                  getLocalIdent: getCSSModuleLocalIdent,
+                },
+                await locate('sass-loader'),
+              ),
+            },
+          ],
         },
       ],
     },
