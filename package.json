@@ -1,6 +1,6 @@
 {
   "name": "pack-alpha-plugin",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Pack your project with Webpack",
   "main": "./dist/index.js",
   "repository": "git@github.com:headline-1/pack-alpha-plugin.git",
