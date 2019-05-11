@@ -37,32 +37,13 @@ const getPackageJsonFor = async (packageName: string): Promise<PackageJson | und
   }
 };
 
-const gitignoreCheck = async () => {
-  if (!paths.cache.startsWith(process.cwd())) {
-    return;
-  }
-  const gitignorePath = await accessFile('.gitignore');
-  if (!gitignorePath) {
-    return;
-  }
-  const gitignore = await readFile(gitignorePath, 'utf8');
-  if (gitignore.includes(paths.cache)) {
-    return;
-  }
-  Logger.warn(TAG,
-    `Build tools cache directory is not in .gitignore file. It's recommended to add '${
-    path.relative(process.cwd(), paths.cache)}' to it.`
-  );
-};
-
 const projectExists = () => access(paths.packageJson, Access.EXISTS);
 
 let projectChecked = false;
 const assureInnerProjectExists = async () => {
-  if(projectChecked){
+  if (projectChecked) {
     return;
   }
-  await gitignoreCheck();
   if (await projectExists()) {
     projectChecked = true;
     return;
@@ -97,15 +78,11 @@ const assurePackageExists = async (packageName: string, version: string) => {
 };
 
 export const use = async (packageName: string, version: string): Promise<any> => {
-  await dependencyManagerQueue.add(async () => {
-    await assurePackageExists(packageName, version);
-  });
+  await dependencyManagerQueue.add(() => assurePackageExists(packageName, version));
   return await import(path.join(paths.nodeModules, packageName));
 };
 
 export const locate = async (packageName: string): Promise<string> => {
-  await dependencyManagerQueue.add(async () => {
-    await assureInnerProjectExists();
-  });
+  await dependencyManagerQueue.add(() => assureInnerProjectExists());
   return path.join(paths.nodeModules, packageName);
 };

@@ -1,5 +1,4 @@
 /* eslint-disable */
-import { isTruthy } from '../utils/notNil.util';
 import { Config } from '../config/config.types';
 import { use } from '../utils/buildDependencyManager.util';
 import { Configuration } from 'webpack';
@@ -12,12 +11,15 @@ export const getWorkboxPack = async ({
   },
 }: Config): Promise<Configuration> => {
   const dev = mode === 'development';
+  if (!serviceWorker || dev) {
+    return {};
+  }
 
   const WorkboxWebpackPlugin = await use('workbox-webpack-plugin', '4.3.1');
 
   return {
     plugins: [
-      !dev && serviceWorker && new WorkboxWebpackPlugin.GenerateSW({
+      new WorkboxWebpackPlugin.GenerateSW({
         swDest: 'service-worker.js',
         importWorkboxFrom: 'local',
         precacheManifestFilename: 'precache-manifest.[manifestHash].js',
@@ -51,6 +53,6 @@ export const getWorkboxPack = async ({
           new RegExp('/[^/]+\\.[^/]+$'),
         ],
       }),
-    ].filter(isTruthy),
+    ],
   };
 };

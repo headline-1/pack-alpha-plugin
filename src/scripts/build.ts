@@ -4,7 +4,7 @@ import {
   OpaqueFileSizes,
   printFileSizesAfterBuild
 } from 'react-dev-utils/FileSizeReporter';
-import webpack, { Stats } from 'webpack';
+import webpack, { ProgressPlugin, Stats } from 'webpack';
 import printBuildError from 'react-dev-utils/printBuildError';
 import printHostingInstructions from 'react-dev-utils/printHostingInstructions';
 import formatWebpackMessages from 'react-dev-utils/formatWebpackMessages';
@@ -28,7 +28,7 @@ process.on('unhandledRejection', err => {
 const WARN_AFTER_BUNDLE_GZIP_SIZE = 512 * 1024;
 const WARN_AFTER_CHUNK_GZIP_SIZE = 1024 * 1024;
 
-export const build = async ({ webpackConfig, options, config }: ConfigResult) => {
+export const buildForProduction = async ({ webpackConfig, options, config }: ConfigResult) => {
   const copyPublicFolder = () => {
     if (!options.staticPath) {
       return;
@@ -49,6 +49,9 @@ export const build = async ({ webpackConfig, options, config }: ConfigResult) =>
     console.log('Creating an optimized production build...');
 
     let compiler = webpack(webpackConfig);
+    new ProgressPlugin((percentage, msg, moduleProgress, activeModules, moduleName) => {
+      console.log(`${Math.round(percentage * 100)}% ${msg} | ${moduleProgress} ${activeModules} ${moduleName}`);
+    }).apply(compiler);
     return new Promise<{
       stats: Stats;
       previousFileSizes: OpaqueFileSizes;
@@ -58,9 +61,8 @@ export const build = async ({ webpackConfig, options, config }: ConfigResult) =>
         if (err) {
           return reject(err);
         }
-        const messages = formatWebpackMessages(
-          stats.toJson({ all: false, warnings: true, errors: true })
-        );
+        const jsonStats = stats.toJson({ all: false, warnings: true, errors: true });
+        const messages = formatWebpackMessages(jsonStats);
         if (messages.errors.length) {
           // Only keep the first error. Others are often indicative
           // of the same problem, but confuse the reader with noise.

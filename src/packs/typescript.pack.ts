@@ -50,7 +50,7 @@ export const getTypescriptPack = async (config: Config): Promise<Configuration> 
                   loader: await locate('ts-loader'),
                   options: {
                     configFile: tsconfig,
-                    transpileOnly: config.options.type === 'browser',
+                    transpileOnly: true,
                   },
                 },
               ],

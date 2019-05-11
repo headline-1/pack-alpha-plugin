@@ -1,15 +1,10 @@
-import { CommandBuilder, Logger, ParametersBuilder, Types } from '@lpha/core';
+import { CommandBuilder, ParametersBuilder, Types } from '@lpha/core';
 import { createWebpackConfiguration } from './config/webpack.config';
-import { build } from './scripts/build';
+import { buildForProduction } from './scripts/build';
 import { startBrowser } from './scripts/startBrowser';
 import { arraify } from './utils/array.util';
 import { startWatch } from './scripts/startWatch';
 import { setCacheLocation } from './utils/buildDependencyManager.util';
-
-Logger.add({
-  log: console.log,
-  useChalk: true,
-});
 
 module.exports = new CommandBuilder()
   .name('pack')
@@ -93,10 +88,17 @@ module.exports = new CommandBuilder()
         default: '.pack',
         required: true,
       })
+      .add('serviceWorker', {
+        type: Types.boolean,
+        description: 'Set to "true" in order to bundle service worker',
+        cli: 'serviceWorker',
+        default: false,
+        required: false,
+      })
       .build(),
   )
   .execute(async ({
-    entry, mode, type, sources, output, html, staticPath, publicPath, circularDependencies, cache,
+    entry, mode, type, sources, output, html, staticPath, publicPath, circularDependencies, cache, serviceWorker,
   }) => {
     setCacheLocation(cache);
     const config = await createWebpackConfiguration({
@@ -110,6 +112,7 @@ module.exports = new CommandBuilder()
       html,
       staticPath,
       circularDependencies,
+      serviceWorker,
       env: process.env as Record<string, string>,
     });
 
@@ -125,7 +128,7 @@ module.exports = new CommandBuilder()
         }
         break;
       case 'production':
-        await build(config);
+        await buildForProduction(config);
         break;
     }
   })

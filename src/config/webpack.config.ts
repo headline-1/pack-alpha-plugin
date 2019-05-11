@@ -124,7 +124,6 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
           cache: true,
           sourceMap: true,
         }),
-
       ],
     },
   };
@@ -163,7 +162,7 @@ export const createWebpackConfiguration = async (options: ConfigOptions): Promis
     },
     resolve: {
       plugins: [
-        new ModuleScopePlugin(config.paths.sources, [path.join(root, 'package.json')]),
+        new ModuleScopePlugin(config.paths.sources, [config.paths.packageJson!]),
       ].filter(isTruthy),
       symlinks: false,
       modules: ['node_modules']
