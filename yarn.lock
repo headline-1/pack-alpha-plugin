@@ -864,10 +864,10 @@
   dependencies:
     "@hapi/hoek" "6.x.x"
 
-"@lpha/core@^0.4.7":
-  version "0.4.7"
-  resolved "https://registry.yarnpkg.com/@lpha/core/-/core-0.4.7.tgz#7ec98643e577041a9a05b0f7c273782a9118a045"
-  integrity sha512-/yw+CUbwq05Nok6Zrc1ojbFEaZS7AXzOoAVHMWF8n4mkLJc+C2phaYm3WJVU+2xIdHqCEA7flJ+PgzDDvUdodg==
+"@lpha/core@^0.4.8":
+  version "0.4.8"
+  resolved "https://registry.yarnpkg.com/@lpha/core/-/core-0.4.8.tgz#e2cdec2d896aac2bf9e9545164b0f58c615f4221"
+  integrity sha512-aPOaZmhRS9uGcm30UPUdvcLybpeWhlrEWoY9xb6kNQR9kvCqfuthysH136jFvW+D/5bws21zndcaDSATWqWGuQ==
   dependencies:
     chalk "^2.4.2"
     glob "^7.1.3"
