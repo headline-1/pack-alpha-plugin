@@ -74,8 +74,8 @@ export const buildForProduction = async ({ webpackConfig, options, config }: Con
         }
       }
       if (tty) {
-        tty.cursorTo(0, 0);
-        tty.clearScreenDown();
+        tty.cursorTo(0, tty.rows - 2);
+        tty.clearLine(0);
       }
       Logger.log(TAG, status + moduleInfo);
     }).apply(compiler);
