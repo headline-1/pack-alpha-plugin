@@ -31,43 +31,42 @@ export const startWatch = async (configResult: ConfigResult) => {
   checkFilesPresence(config.paths.entries);
   try {
     const compiler = webpack(webpackConfig);
-    const watcher = compiler.watch({
-      ignored: config.ignore,
-    }, async (err, stats) => {
-      if (err) {
-        return console.log(chalk.red(`${chalk.bold(err.name)}: ${err.message}`));
-      }
-      if (isInteractive) {
-        clearConsole();
-      }
-      const { warnings, errors } = formatWebpackMessages(
-        stats.toJson({ all: false, warnings: true, errors: true })
-      );
-      if (errors.length) {
-        console.log(chalk.red('Compilation failed.\n'));
-        console.log(errors.join('\n\n'));
-      }
-      if (warnings.length) {
-        console.log(chalk.yellow('Warnings occurred.\n'));
-        console.log(warnings.join('\n\n'));
-      }
-      if(errors.length || warnings.length){
-        return;
-      }
-      console.log(chalk.green('Compiled successfully.\n'));
+    await new Promise((resolve) => {
+      const watcher = compiler.watch({
+        ignored: config.ignore,
+      }, async (err, stats) => {
+        if (err) {
+          return console.log(chalk.red(`${chalk.bold(err.name)}: ${err.message}`));
+        }
+        if (isInteractive) {
+          clearConsole();
+        }
+        const { warnings, errors } = formatWebpackMessages(
+          stats.toJson({ all: false, warnings: true, errors: true })
+        );
+        if (errors.length) {
+          console.log(chalk.red('Compilation failed.\n'));
+          console.log(errors.join('\n\n'));
+        }
+        if (warnings.length) {
+          console.log(chalk.yellow('Warnings occurred.\n'));
+          console.log(warnings.join('\n\n'));
+        }
+        if (errors.length || warnings.length) {
+          return;
+        }
+        console.log(chalk.green('Compiled successfully.\n'));
 
-      if (options.stats) {
-        await bfj.write(path.join(config.paths.output, 'bundle-stats.json'), stats.toJson());
-      }
-    });
-
-    const die = () => {
-      watcher.close(() => {
-        process.exit();
+        if (options.stats) {
+          await bfj.write(path.join(config.paths.output, 'bundle-stats.json'), stats.toJson());
+        }
       });
-    };
-    process.on('SIGINT', die);
-    process.on('SIGTERM', die);
+      const die = () => {
+        watcher.close(() => resolve());
+      };
+      process.on('SIGINT', die);
+      process.on('SIGTERM', die);
+    });
   } catch (err) {
     if (err && err.message) {
       console.log(err.message);

@@ -13,6 +13,11 @@ import bfj from 'bfj';
 import fs from 'fs-extra';
 import chalk from 'chalk';
 import path from 'path';
+import { Logger } from '@lpha/core';
+import { last } from 'lodash';
+import { WriteStream } from 'tty';
+
+const TAG = 'Webpack';
 
 process.env.BABEL_ENV = 'production';
 process.env.NODE_ENV = 'production';
@@ -46,11 +51,33 @@ export const buildForProduction = async ({ webpackConfig, options, config }: Con
   };
 
   const build = async (previousFileSizes: OpaqueFileSizes) => {
-    console.log('Creating an optimized production build...');
+    Logger.log(TAG, 'Creating an optimized production build...');
 
     let compiler = webpack(webpackConfig);
-    new ProgressPlugin((percentage, msg, moduleProgress, activeModules, moduleName) => {
-      console.log(`${Math.round(percentage * 100)}% ${msg} | ${moduleProgress} ${activeModules} ${moduleName}`);
+    const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+    const tty = process.stdout.isTTY && process.stdout as WriteStream;
+    new ProgressPlugin((percentage, message, moduleProgress = '', _, moduleName) => {
+      const progress = `${(percentage * 100).toFixed(1)}%`;
+      const status = `${chalk.bold(capitalize(message))}: ${progress}`;
+      const modules = !moduleName ? [] : moduleName.split('!')
+        .map(p => p.split('?')[0])
+        .map(p => path.relative(options.root, p));
+      const module = last(modules);
+      let moduleInfo = '';
+      if (module) {
+        moduleInfo += ` | ${chalk.underline(module)}`;
+
+        const loaders = modules.slice(0, modules.length - 1)
+          .map(l => last(l.split('node_modules/'))!.split('/')[0]);
+        if (loaders.length) {
+          moduleInfo += chalk.grey(` with: ${loaders.join(', ')}`);
+        }
+      }
+      if (tty) {
+        tty.cursorTo(0, 0);
+        tty.clearScreenDown();
+      }
+      Logger.log(TAG, status + moduleInfo);
     }).apply(compiler);
     return new Promise<{
       stats: Stats;
@@ -77,7 +104,7 @@ export const buildForProduction = async ({ webpackConfig, options, config }: Con
             process.env.CI.toLowerCase() !== 'false') &&
           messages.warnings.length
         ) {
-          console.log(
+          Logger.log(TAG,
             chalk.yellow(
               '\nTreating warnings as errors because process.env.CI = true.\n' +
               'Most CI servers set it automatically.\n'
@@ -108,13 +135,13 @@ export const buildForProduction = async ({ webpackConfig, options, config }: Con
     try {
       const { stats, previousFileSizes, warnings } = await build(fileSizes);
       if (warnings.length) {
-        console.log(chalk.yellow('Compiled with warnings.\n'));
-        console.log(warnings.join('\n\n'));
+        Logger.warn(TAG, chalk.yellow('Compiled with warnings.\n'));
+        Logger.warn(TAG, warnings.join('\n\n'));
       } else {
-        console.log(chalk.green('Compiled successfully.\n'));
+        Logger.log(TAG, chalk.green('Compiled successfully.\n'));
       }
 
-      console.log('File sizes after gzip:\n');
+      Logger.log(TAG, 'File sizes after gzip:\n');
       printFileSizesAfterBuild(
         stats,
         previousFileSizes,
@@ -140,13 +167,13 @@ export const buildForProduction = async ({ webpackConfig, options, config }: Con
         );
       }
     } catch (err) {
-      console.log(chalk.red('Failed to compile.\n'));
+      Logger.error(TAG, 'Failed to compile.\n');
       printBuildError(err);
       process.exit(1);
     }
   } catch (err) {
     if (err && err.message) {
-      console.log(err.message);
+      Logger.error(TAG, err.message);
     }
     process.exit(1);
   }

@@ -1,4 +1,4 @@
-import { CommandBuilder, ParametersBuilder, Types } from '@lpha/core';
+import { CommandBuilder, Logger, ParametersBuilder, Types } from '@lpha/core';
 import { createWebpackConfiguration } from './config/webpack.config';
 import { buildForProduction } from './scripts/build';
 import { startBrowser } from './scripts/startBrowser';
@@ -101,6 +101,7 @@ module.exports = new CommandBuilder()
     entry, mode, type, sources, output, html, staticPath, publicPath, circularDependencies, cache, serviceWorker,
   }) => {
     setCacheLocation(cache);
+    Logger.log('Pack', 'Creating webpack configuration...');
     const config = await createWebpackConfiguration({
       type,
       entry,

@@ -70,24 +70,26 @@ export const startBrowser = async (configResult: ConfigResult) => {
       proxyConfig,
       urls.lanUrlForConfig,
     );
-    const devServer = new WebpackDevServer(compiler, serverConfig);
-    devServer.listen(port, HOST, (err?: Error) => {
-      if (err) {
-        return console.log(err);
-      }
-      if (isInteractive) {
-        clearConsole();
-      }
-      console.log(chalk.cyan('Starting the development server...\n'));
-      openBrowser(urls.localUrlForBrowser);
-    });
+    await new Promise((resolve) => {
+      const devServer = new WebpackDevServer(compiler, serverConfig);
+      devServer.listen(port, HOST, (err?: Error) => {
+        if (err) {
+          return console.log(err);
+        }
+        if (isInteractive) {
+          clearConsole();
+        }
+        console.log(chalk.cyan('Starting the development server...\n'));
+        openBrowser(urls.localUrlForBrowser);
+      });
 
-    const die = () => {
-      devServer.close();
-      process.exit();
-    };
-    process.on('SIGINT', die);
-    process.on('SIGTERM', die);
+      const die = () => {
+        devServer.close();
+        resolve();
+      };
+      process.on('SIGINT', die);
+      process.on('SIGTERM', die);
+    });
   } catch (err) {
     if (err && err.message) {
       console.log(err.message);
